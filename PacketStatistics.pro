@@ -20,13 +20,15 @@ SOURCES += \
     main.cpp \
     main_window.cpp \
     packet_statistics.cpp \
+    pol4b_ip.cpp \
+    pol4b_mac.cpp \
     statistics_window.cpp
 
 HEADERS += \
     main_window.h \
     packet_statistics.h \
-    pol4b_ether.h \
     pol4b_ip.h \
+    pol4b_mac.h \
     statistics_window.h \
     table_models.h
 

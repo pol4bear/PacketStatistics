@@ -8,7 +8,7 @@ using namespace pol4b;
 
 class MacEndpointsModel : public QAbstractTableModel {
    QList<Mac> m_key;
-   QList<PacketInfo> m_data;
+   QList<PacketStatistics::PacketInfo> m_data;
 public:
    MacEndpointsModel(QObject * parent = {}) : QAbstractTableModel{parent} {}
    int rowCount(const QModelIndex &) const override { return m_data.count(); }
@@ -40,7 +40,7 @@ public:
       default: return {};
       }
    }
-   void append(const Mac &mac, const PacketInfo &packet_info) {
+   void append(const Mac &mac, const PacketStatistics::PacketInfo &packet_info) {
       beginInsertRows({}, m_data.count(), m_data.count());
       m_key.append(mac);
       m_data.append(packet_info);
@@ -50,7 +50,7 @@ public:
 
 class MacConversationsModel : public QAbstractTableModel {
    QList<MacPair> m_key;
-   QList<PacketInfo> m_data;
+   QList<PacketStatistics::PacketInfo> m_data;
 public:
    MacConversationsModel(QObject * parent = {}) : QAbstractTableModel{parent} {}
    int rowCount(const QModelIndex &) const override { return m_data.count(); }
@@ -59,8 +59,8 @@ public:
       if (role != Qt::DisplayRole && role != Qt::EditRole) return {};
       const auto &packet_info = m_data[index.row()];
       switch (index.column()) {
-      case 0: return QString::fromStdString(m_key[index.row()].src_mac.to_string());
-      case 1: return QString::fromStdString(m_key[index.row()].dst_mac.to_string());
+      case 0: return QString::fromStdString(m_key[index.row()].src_addr.to_string());
+      case 1: return QString::fromStdString(m_key[index.row()].dst_addr.to_string());
       case 2: return QString::number(packet_info.tx_packets + packet_info.rx_packets);
       case 3: return QString::number(packet_info.tx_size + packet_info.rx_size);
       case 4: return QString::number(packet_info.tx_packets);
@@ -84,7 +84,7 @@ public:
       default: return {};
       }
    }
-   void append(const MacPair &mac_pair, const PacketInfo &packet_info) {
+   void append(const MacPair &mac_pair, const PacketStatistics::PacketInfo &packet_info) {
       beginInsertRows({}, m_data.count(), m_data.count());
       m_key.append(mac_pair);
       m_data.append(packet_info);
@@ -94,7 +94,7 @@ public:
 
 class IpEndpointsModel : public QAbstractTableModel {
    QList<Ip> m_key;
-   QList<PacketInfo> m_data;
+   QList<PacketStatistics::PacketInfo> m_data;
 public:
    IpEndpointsModel(QObject * parent = {}) : QAbstractTableModel{parent} {}
    int rowCount(const QModelIndex &) const override { return m_data.count(); }
@@ -103,7 +103,7 @@ public:
       if (role != Qt::DisplayRole && role != Qt::EditRole) return {};
       const auto &packet_info = m_data[index.row()];
       switch (index.column()) {
-      case 0: return QString::fromStdString(ip_to_string(m_key[index.row()]));
+      case 0: return QString::fromStdString(m_key[index.row()]);
       case 1: return QString::number(packet_info.tx_packets + packet_info.rx_packets);
       case 2: return QString::number(packet_info.tx_size + packet_info.rx_size);
       case 3: return QString::number(packet_info.tx_packets);
@@ -126,7 +126,7 @@ public:
       default: return {};
       }
    }
-   void append(const Ip &mac, const PacketInfo &packet_info) {
+   void append(const Ip &mac, const PacketStatistics::PacketInfo &packet_info) {
       beginInsertRows({}, m_data.count(), m_data.count());
       m_key.append(mac);
       m_data.append(packet_info);
@@ -136,7 +136,7 @@ public:
 
 class IpConversationsModel : public QAbstractTableModel {
    QList<IpPair> m_key;
-   QList<PacketInfo> m_data;
+   QList<PacketStatistics::PacketInfo> m_data;
 public:
    IpConversationsModel(QObject * parent = {}) : QAbstractTableModel{parent} {}
    int rowCount(const QModelIndex &) const override { return m_data.count(); }
@@ -145,8 +145,8 @@ public:
       if (role != Qt::DisplayRole && role != Qt::EditRole) return {};
       const auto &packet_info = m_data[index.row()];
       switch (index.column()) {
-      case 0: return QString::fromStdString(ip_to_string(get_src_ip(m_key[index.row()])));
-      case 1: return QString::fromStdString(ip_to_string(get_dst_ip(m_key[index.row()])));
+      case 0: return QString::fromStdString(m_key[index.row()].src_addr);
+      case 1: return QString::fromStdString(m_key[index.row()].dst_addr);
       case 2: return QString::number(packet_info.tx_packets + packet_info.rx_packets);
       case 3: return QString::number(packet_info.tx_size + packet_info.rx_size);
       case 4: return QString::number(packet_info.tx_packets);
@@ -170,7 +170,7 @@ public:
       default: return {};
       }
    }
-   void append(const IpPair &ip_pair, const PacketInfo &packet_info) {
+   void append(const IpPair &ip_pair, const PacketStatistics::PacketInfo &packet_info) {
       beginInsertRows({}, m_data.count(), m_data.count());
       m_key.append(ip_pair);
       m_data.append(packet_info);

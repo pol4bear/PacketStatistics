@@ -64,7 +64,7 @@ void MainWindow::on_statistics_finished()
 {
     set_enabled(true);
 
-    StatisticsWindow statistics_window(packet_statistics, this);
+    StatisticsWindow statistics_window(*packet_statistics, this);
     statistics_window.exec();
 }
 

@@ -1,22 +1,28 @@
 #pragma once
 
 #include <cstdint>
+#include <cstring>
 #include <string>
 #include <arpa/inet.h>
 
 namespace pol4b {
-using Ip=uint32_t;
-using IpPair=uint64_t;
+class Ip {
+public:
+    static const int size = 4;
 
-static std::string ip_to_string(uint32_t ip) {
-    return std::string(inet_ntoa(*(in_addr*)&ip));
-}
+public:
+    Ip();
+    Ip(const Ip &ip);
+    Ip(uint32_t addr_in);
 
-static uint32_t get_src_ip(IpPair ip_pair) {
-    return ip_pair >> 32;
-}
+    uint8_t addr[size];
 
-static uint32_t get_dst_ip(IpPair ip_pair) {
-    return ip_pair;
-}
+    std::string to_string() const;
+
+    Ip &operator=(const Ip &rhs);
+    Ip &operator=(const uint8_t rhs[size]);
+    bool operator<(const Ip &rhs) const;
+
+    operator std::string() const;
+};
 }

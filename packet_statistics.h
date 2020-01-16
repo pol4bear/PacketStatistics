@@ -8,25 +8,32 @@
 #include <netinet/ether.h>
 #include <netinet/ip.h>
 #include <pcap/pcap.h>
-#include "pol4b_ether.h"
+#include "pol4b_mac.h"
 #include "pol4b_ip.h"
 
 namespace pol4b{
-// Classes
-class MacPair;
-class PacketInfo;
+template<class T>
+class AddrPair;
 class PacketStatistics;
 
-// Types
-using OnFinished=std::function<void()>;
-using OnError=std::function<void(int)>;
-using MacEndpoints=std::map<Mac, PacketInfo>;
-using MacConversations=std::map<MacPair, PacketInfo>;
-using IpEndpoints=std::map<Ip, PacketInfo>;
-using IpConversations=std::map<IpPair, PacketInfo>;
+using MacPair = AddrPair<Mac>;
+using IpPair = AddrPair<Ip>;
 
 class PacketStatistics
 {
+public:
+    class PacketInfo;
+
+    using MacEndpoints = std::map<Mac, PacketInfo>;
+    using MacConversations = std::map<MacPair, PacketInfo>;
+    using IpEndpoints=std::map<Ip, PacketInfo>;
+    using IpConversations=std::map<IpPair, PacketInfo>;
+
+    // Types
+    using OnFinished = std::function<void()>;
+    using OnError = std::function<void(int)>;
+
+
 public:
     // Constructors
     PacketStatistics(OnFinished cb_on_finished_in = nullptr, OnError cb_on_error_in = nullptr);
@@ -35,10 +42,10 @@ public:
     bool get_state() const;
     std::string get_path() const;
     std::string get_file_name() const;
-    const MacEndpoints *get_mac_endpoints() const;
-    const MacConversations *get_mac_conversations() const;
-    const IpEndpoints *get_ip_endpoints() const;
-    const IpConversations *get_ip_conversations() const;
+    MacEndpoints *get_mac_endpoints();
+    MacConversations *get_mac_conversations();
+    IpEndpoints *get_ip_endpoints();
+    IpConversations *get_ip_conversations();
 
     // Public Methods
     void do_statistics(std::string path_in);
@@ -50,7 +57,18 @@ public:
         ERR_PCAP_OPEN
     };
 
-private:
+public:
+    class PacketInfo {
+    public:
+        PacketInfo() : tx_packets(0), tx_size(0), rx_packets(0), rx_size(0) {}
+
+        int tx_packets;
+        int tx_size;
+        int rx_packets;
+        int rx_size;
+    };
+
+//private:
     // Private Members
     bool is_running;
     std::string path;
@@ -71,32 +89,17 @@ private:
     static void *analyze(void *obj);
 };
 
-class MacPair {
+template<class T>
+class AddrPair {
 public:
-    Mac src_mac;
-    Mac dst_mac;
+    T src_addr;
+    T dst_addr;
 
-    MacPair() {}
-    MacPair(uint8_t src_mac_in[6], uint8_t dst_mac_in[6]) : src_mac(src_mac_in), dst_mac(dst_mac_in) {}
+    AddrPair();
+    AddrPair(T &src_addr_in, T &dst_addr_in);
 
-    MacPair &operator=(const MacPair &rhs) {
-        src_mac = rhs.src_mac;
-        dst_mac = rhs.dst_mac;
-        return *this;
-    }
+    AddrPair &operator=(const AddrPair &rhs);
 
-    bool operator<(const MacPair &rhs) const {
-        return src_mac < rhs.src_mac || dst_mac < rhs.dst_mac;
-    }
-};
-
-class PacketInfo {
-public:
-    PacketInfo() : tx_packets(0), tx_size(0), rx_packets(0), rx_size(0) {}
-
-    int tx_packets;
-    int tx_size;
-    int rx_packets;
-    int rx_size;
+    bool operator<(const AddrPair &rhs) const;
 };
 }

@@ -27,22 +27,22 @@ string PacketStatistics::get_file_name() const
     return file_name;
 }
 
-const MacEndpoints *PacketStatistics::get_mac_endpoints() const
+PacketStatistics::MacEndpoints *PacketStatistics::get_mac_endpoints()
 {
     return &mac_endpoints;
 }
 
-const MacConversations *PacketStatistics::get_mac_conversations() const
+PacketStatistics::MacConversations *PacketStatistics::get_mac_conversations()
 {
     return &mac_conversations;
 }
 
-const IpEndpoints *PacketStatistics::get_ip_endpoints() const
+PacketStatistics::IpEndpoints *PacketStatistics::get_ip_endpoints()
 {
     return &ip_endpoints;
 }
 
-const IpConversations *PacketStatistics::get_ip_conversations() const
+PacketStatistics::IpConversations *PacketStatistics::get_ip_conversations()
 {
     return &ip_conversations;
 }
@@ -107,67 +107,57 @@ void *PacketStatistics::analyze(void *object)
     const uint8_t *packet;
     while (pcap_next_ex(handle, &packet_header, &packet) == 1) {
         ethhdr *ether_header = (ethhdr*)packet;
-        bool mac_exists = false, mac_is_reverse = false;
-        MacPair mac_pair(ether_header->h_source, ether_header->h_dest), rev_mac_pair(ether_header->h_dest, ether_header->h_source);
+        bool mac_is_reverse = false;
+        Mac src_mac(ether_header->h_source), dst_mac(ether_header->h_dest);
+        MacPair mac_pair;
 
-        // Check if src & dst MAC pair is already in conversations
-        if (obj->mac_conversations.find(mac_pair) != obj->mac_conversations.end()) {
-            mac_exists = true;
+        // Make smaller mac goes left hand side
+        if (src_mac < dst_mac) {
+            mac_pair = MacPair(src_mac, dst_mac);
         }
-        else if (obj->mac_conversations.find(rev_mac_pair) != obj->mac_conversations.end()) {
-            mac_exists = true;
+        else {
+            mac_pair = MacPair(dst_mac, src_mac);
             mac_is_reverse = true;
         }
 
-        // If src & dst MAC pair doesn't exist insert to conversations
-        if (!mac_exists) {
-            obj->mac_conversations.insert(make_pair(mac_pair, PacketInfo()));
-            obj->mac_endpoints.insert(make_pair(mac_pair.src_mac, PacketInfo()));
-            obj->mac_endpoints.insert(make_pair(mac_pair.dst_mac, PacketInfo()));
-            mac_exists = true;
-        }
+
+        obj->mac_conversations.insert(make_pair(mac_pair, PacketInfo()));
+        obj->mac_endpoints.insert(make_pair(src_mac, PacketInfo()));
+        obj->mac_endpoints.insert(make_pair(dst_mac, PacketInfo()));
 
         // Update packet info of src & dst MAC
         if (!mac_is_reverse) {
             obj->mac_conversations[mac_pair].tx_packets++;
             obj->mac_conversations[mac_pair].tx_size += packet_header->caplen;
-            obj->mac_endpoints[mac_pair.src_mac].tx_packets++;
-            obj->mac_endpoints[mac_pair.src_mac].tx_size += packet_header->caplen;
-            obj->mac_endpoints[mac_pair.dst_mac].rx_packets++;
-            obj->mac_endpoints[mac_pair.dst_mac].rx_size += packet_header->caplen;
         }
         else {
-            obj->mac_conversations[rev_mac_pair].rx_packets++;
-            obj->mac_conversations[rev_mac_pair].rx_size += packet_header->caplen;
-            obj->mac_endpoints[rev_mac_pair.src_mac].rx_packets++;
-            obj->mac_endpoints[rev_mac_pair.src_mac].rx_size += packet_header->caplen;
-            obj->mac_endpoints[rev_mac_pair.dst_mac].tx_packets++;
-            obj->mac_endpoints[rev_mac_pair.dst_mac].tx_size += packet_header->caplen;
+            obj->mac_conversations[mac_pair].rx_packets++;
+            obj->mac_conversations[mac_pair].rx_size += packet_header->caplen;
         }
+
+        obj->mac_endpoints[src_mac].tx_packets++;
+        obj->mac_endpoints[src_mac].tx_size += packet_header->caplen;
+        obj->mac_endpoints[dst_mac].rx_packets++;
+        obj->mac_endpoints[dst_mac].rx_size += packet_header->caplen;
 
         // If protocol is IP do statistics for IP
         if (ntohs(ether_header->h_proto) == ETH_P_IP) {
             iphdr *ip_header = (iphdr*)&packet[ETH_HLEN];
-            bool ip_exists = false, ip_is_reverse = false;
-            IpPair ip_pair = (uint64_t)ip_header->saddr << 32 | ip_header->daddr;
-            IpPair rev_ip_pair = (uint64_t)ip_header->daddr << 32 | ip_header->saddr;
+            bool ip_is_reverse = false;
+            Ip src_ip(ip_header->saddr), dst_ip(ip_header->daddr);
+            IpPair ip_pair;
 
-            // Check if src & dst IP pair is already in conversations
-            if (obj->ip_conversations.find(ip_pair) != obj->ip_conversations.end()) {
-                ip_exists = true;
+            if (src_ip < dst_ip) {
+                ip_pair = IpPair(src_ip, dst_ip);
             }
-            else if (obj->ip_conversations.find(rev_ip_pair) != obj->ip_conversations.end()) {
-                ip_exists = true;
+            else {
+                ip_pair = IpPair(dst_ip, src_ip);
                 ip_is_reverse = true;
             }
 
-            // If src & dst IP pair doesn't exist insert to conversations
-            if (!ip_exists) {
-                obj->ip_conversations.insert(make_pair(ip_pair, PacketInfo()));
-                obj->ip_endpoints.insert(make_pair(ip_header->saddr, PacketInfo()));
-                obj->ip_endpoints.insert(make_pair(ip_header->daddr, PacketInfo()));
-                ip_exists = true;
-            }
+            obj->ip_conversations.insert(make_pair(ip_pair, PacketInfo()));
+            obj->ip_endpoints.insert(make_pair(src_ip, PacketInfo()));
+            obj->ip_endpoints.insert(make_pair(dst_ip, PacketInfo()));
 
             // Update packet info of src & dst IP
             if (!ip_is_reverse) {
@@ -175,8 +165,8 @@ void *PacketStatistics::analyze(void *object)
                 obj->ip_conversations[ip_pair].tx_size += packet_header->caplen;
             }
             else {
-                obj->ip_conversations[rev_ip_pair].rx_packets++;
-                obj->ip_conversations[rev_ip_pair].rx_size += packet_header->caplen;
+                obj->ip_conversations[ip_pair].rx_packets++;
+                obj->ip_conversations[ip_pair].rx_size += packet_header->caplen;
             }
 
             obj->ip_endpoints[ip_header->saddr].tx_packets++;
@@ -191,4 +181,24 @@ void *PacketStatistics::analyze(void *object)
 
 fin:
     return nullptr;
+}
+
+template<class T>
+AddrPair<T>::AddrPair() {}
+
+template<class T>
+AddrPair<T>::AddrPair(T &src_addr_in, T &dst_addr_in)
+    : src_addr(src_addr_in), dst_addr(dst_addr_in) {}
+
+template<class T>
+AddrPair<T> &AddrPair<T>::operator=(const AddrPair<T> &rhs)
+{
+    src_addr = rhs.src_addr;
+    dst_addr = rhs.dst_addr;
+}
+
+template<class T>
+bool AddrPair<T>::operator<(const AddrPair &rhs) const
+{
+    return memcmp(this, &rhs, sizeof(AddrPair)) < 0;
 }
